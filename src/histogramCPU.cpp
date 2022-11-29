@@ -1,5 +1,4 @@
 #include "histogramCPU.hpp"
-
 void rgb2hsv(unsigned char* p_pixels, int p_imageSize, float* p_hue, float* p_saturation, float* p_value)
 {
     for (int i = 0; i < p_imageSize; i++)
@@ -36,30 +35,33 @@ void rgb2hsv(unsigned char* p_pixels, int p_imageSize, float* p_hue, float* p_sa
     }
 }
 
-void HistogramCPU::hsv2rgb(unsigned char* p_rgb)
-{
-    for (int i = 0; i < _imageSize; i++)
+void hsv2rgb(unsigned char* p_rgb, int p_imageSize, float* p_hue, float* p_saturation, float* p_value) {
+    for (int i = 0; i < p_imageSize; i++)
     {
-        float C = _saturation[i] * _value[i];
-        float X = C * (1.f - std::abs(std::fmod(_hue[i] / 60, 2.f) - 1.f));
-        float m = _value[i] - C;
+        float C = p_saturation[i] * p_value[i];
+        float X = C * (1.f - std::abs(std::fmod(p_hue[i] / 60.f, 2.f) - 1.f));
+        float m = p_value[i] - C;
 
         float r = 0.f;
         float g = 0.f;
         float b = 0.f;
 
-        if (delta == 0.f)
-            p_hue[i] = 0.f;
-        else if (Cmax == rgb[0])
-            p_hue[i] = 60.f * ((rgb[1] - rgb[2]) / delta);
-        else if (Cmax == rgb[1])
-            p_hue[i] = 60.f * (((rgb[2] - rgb[0]) / delta) + 2.f);
-        else if (Cmax == rgb[2])
-            p_hue[i] = 60.f * (((rgb[0] - rgb[1]) / delta) + 4.f);
+        if (p_hue[i] < 60)
+            r = C, g = X, b = 0;
+        else if (p_hue[i] < 120)
+            r = X, g = C, b = 0;
+        else if (p_hue[i] < 180)
+            r = 0, g = C, b = X;
+        else if (p_hue[i] < 240)
+            r = 0, g = X, b = C;
+        else if (p_hue[i] < 300)
+            r = X, g = 0, b = C;
+        else
+            r = C, g = 0, b = X;
 
-        p_rgb[3 * i] = static_cast<unsigned char>(255 * (r + m));
-        p_rgb[3 * i + 1] = static_cast<unsigned char>(255 * (g + m));
-        p_rgb[3 * i + 2] = static_cast<unsigned char>(255 * (b + m));
+        p_rgb[3*i] = static_cast<unsigned char>(255 * (r + m));
+        p_rgb[3*i+1] = static_cast<unsigned char>(255 * (g + m));
+        p_rgb[3*i+2] = static_cast<unsigned char>(255 * (b + m));
     }
 }
 
