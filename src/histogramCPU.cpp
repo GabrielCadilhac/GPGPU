@@ -1,33 +1,38 @@
 #include "histogramCPU.hpp"
 
-void HistogramCPU::rgb2hsv(unsigned char* p_pixel)
+void rgb2hsv(unsigned char* p_pixels, int p_imageSize, float* p_hue, float* p_saturation, float* p_value)
 {
-    for (int i = 0; i < _imageSize; i++)
+    for (int i = 0; i < p_imageSize; i++)
     {
         float* rgb = new float[3];
-        rgb[0] = static_cast<float>(p_pixel[3 * i]) / 255.f;
-        rgb[1] = static_cast<float>(p_pixel[3 * i + 1]) / 255.f;
-        rgb[2] = static_cast<float>(p_pixel[3 * i + 2]) / 255.f;
-        
-        float Cmax = std::fmax(rgb[0], std::fmax(rgb[1], rgb[2]));
-        float Cmin = std::fmin(rgb[0], std::fmin(rgb[1], rgb[2]));
+        rgb[0] = static_cast<float>(p_pixels[3 * i])/255.f;
+        rgb[1] = static_cast<float>(p_pixels[3 * i + 1])/255.f;
+        rgb[2] = static_cast<float>(p_pixels[3 * i + 2]) / 255.f;
+
+        float Cmax = std::max(rgb[0], std::max(rgb[1], rgb[2]));
+        float Cmin = std::min(rgb[0], std::min(rgb[1], rgb[2]));
         float delta = Cmax - Cmin;
 
-        if (delta == 0.0f)
-            _hue[i] = 0.f;
+        if (delta == 0.f)
+            p_hue[i] = 0.f;
         else if (Cmax == rgb[0])
-            _hue[i] = static_cast<int>(60.f * ((rgb[1] - rgb[2]) / delta) + 360.f) % 360;
+            p_hue[i] = 60.f * ((rgb[1] - rgb[2]) / delta);
         else if (Cmax == rgb[1])
-            _hue[i] = 60.f * ((rgb[2] - rgb[0]) / delta) + 120.f;
+            p_hue[i] = 60.f * (((rgb[2] - rgb[0]) / delta) + 2.f);
         else if (Cmax == rgb[2])
-            _hue[i] = 60.f * ((rgb[0] - rgb[1]) / delta) + 240.f;
+            p_hue[i] = 60.f * (((rgb[0] - rgb[1]) / delta) + 4.f);
 
-        if (delta == 0)
-            _saturation[i] = 0;
+        if (p_hue[i] < 0)
+            p_hue[i] += 360;
+
+        if (Cmax > 0)
+            p_saturation[i] = delta / Cmax;
         else
-            _saturation[i] = delta / Cmax;
+            p_saturation[i] = 0.f;
 
-        _value[i] = Cmax*100;
+        p_value[i] = Cmax;
+
+        delete[] rgb;
     }
 }
 
@@ -36,25 +41,21 @@ void HistogramCPU::hsv2rgb(unsigned char* p_rgb)
     for (int i = 0; i < _imageSize; i++)
     {
         float C = _saturation[i] * _value[i];
-        float X = C * (1.f - std::abs(std::fmodf(_hue[i] / 60, 2.f) - 1.f));
+        float X = C * (1.f - std::abs(std::fmod(_hue[i] / 60, 2.f) - 1.f));
         float m = _value[i] - C;
 
         float r = 0.f;
         float g = 0.f;
         float b = 0.f;
 
-        if (0 < _hue[i] && _hue[i] < 60)
-            r = C, g = X, b = 0;
-        else if (60 < _hue[i] && _hue[i] < 120)
-            r = X, g = C, b = 0;
-        else if (120 < _hue[i] && _hue[i] < 180)
-            r = 0, g = C, b = X;
-        else if (180 < _hue[i] && _hue[i] < 240)
-            r = 0, g = X, b = C;
-        else if (240 < _hue[i] && _hue[i] < 300)
-            r = X, g = 0, b = C;
-        else if (300 < _hue[i] && _hue[i] < 360)
-            r = C, g = 0, b = X;
+        if (delta == 0.f)
+            p_hue[i] = 0.f;
+        else if (Cmax == rgb[0])
+            p_hue[i] = 60.f * ((rgb[1] - rgb[2]) / delta);
+        else if (Cmax == rgb[1])
+            p_hue[i] = 60.f * (((rgb[2] - rgb[0]) / delta) + 2.f);
+        else if (Cmax == rgb[2])
+            p_hue[i] = 60.f * (((rgb[0] - rgb[1]) / delta) + 4.f);
 
         p_rgb[3 * i] = static_cast<unsigned char>(255 * (r + m));
         p_rgb[3 * i + 1] = static_cast<unsigned char>(255 * (g + m));
