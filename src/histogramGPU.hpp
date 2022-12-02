@@ -12,7 +12,7 @@
 
 class HistogramGPU {
 	public:
-		float histogramEqualisation(const std::string p_loadPath, const std::string p_SavePath, unsigned char* outGPU);
+		float histogramEqualisation(const std::string p_loadPath, const std::string p_SavePath, int* outGPU);
 };
 
 #endif // !__HISTOGRAM_GPU__

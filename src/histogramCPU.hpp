@@ -19,6 +19,8 @@ class HistogramCPU {
 	
 		unsigned char* _pixels = nullptr;
 
+		int histoSize = 100;
+
 		void rgb2hsv(unsigned char* p_pixels);
 		void hsv2rgb(unsigned char* p_rgb);
 	
@@ -26,7 +28,7 @@ class HistogramCPU {
 		float repart(int* p_hist, int p_l);
 		float* equalization();
 
-		float histogramEqualisation(const std::string & p_imageLoadPath, const std::string & p_imageSavePath, unsigned char* outCPU);
+		float histogramEqualisation(const std::string & p_imageLoadPath, const std::string & p_imageSavePath, int* outCPU);
 };
 
 #endif // ! __HISTOGRAM_CPU__

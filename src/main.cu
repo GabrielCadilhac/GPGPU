@@ -10,8 +10,8 @@ int main(int argc, char const *argv[])
     image->load("./images/chevre.png");
     const int imageSize = image->_width * image->_height;
 
-    unsigned char *outCPU = new unsigned char[3 * imageSize];
-    unsigned char *outGPU = new unsigned char[3 * imageSize];
+    int *outCPU = new int[101];
+    int *outGPU = new int[101];
 
     float cpuTime = 0.f;
     float gpuTime = 0.f;
@@ -37,16 +37,19 @@ int main(int argc, char const *argv[])
 	std::cout << "              Checking results		      "	<< std::endl;
 	std::cout << "============================================"	<< std::endl;
 
-	for ( int i = 0; i < 10; ++i ) 
+	for ( int i = 0; i < 101; ++i ) 
 	{
         // Result may be slightly different between CPU and GPU because of the floating-point calculation
-        if ( fabsf(outCPU[i] - outGPU[i]) > 1)  { 
+        if ( fabsf(outCPU[i] - outGPU[i]) > 2)  { 
             std::cerr << "Error for index " << i <<" :" << std::endl;
-            std::cerr << "\t CPU: [" << static_cast<int>(outCPU[i]) << " " << static_cast<int>(outCPU[i+1]) << " " << static_cast<int>(outCPU[i+2]) << "]" << std::endl;
-            std::cerr << "\t GPU: [" << static_cast<int>(outGPU[i]) << " " << static_cast<int>(outCPU[i+1]) << " " << static_cast<int>(outCPU[i+2]) << "]" << std::endl;
+            std::cerr << "\t CPU: [" << static_cast<int>(outCPU[i]) << "]" << std::endl;
+            std::cerr << "\t GPU: [" << static_cast<int>(outGPU[i]) << "]" << std::endl;
             exit( EXIT_FAILURE );
         }
 	}
 	std::cout << "Congratulations! Job's done!" << std::endl << std::endl;
+
+    delete[] outCPU;
+    delete[] outGPU;
     return 0;
 }

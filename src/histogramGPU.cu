@@ -71,14 +71,12 @@ __global__ void hsv2rgb(unsigned char* p_devOutPixels, int p_imageSize, float* p
 
 __global__ void histogram(const int* const p_inValue, int *p_outHisto, const int p_valueSize)
 {
-	int bid = blockIdx.x + gridDim.x * blockIdx.y; // Index d'un block dans une grille 2D
-	int totalBlock = gridDim.x * gridDim.y; // Nombre de block total
-	int tid = (threadIdx.x + bid * blockDim.x); // Index du thread global (dans une grille 2D)
+	int tid = (threadIdx.x + blockIdx.x * blockDim.x);
 	
 	while (tid < p_valueSize)
     {
         atomicAdd(&p_outHisto[p_inValue[tid]], 1);
-		tid += blockDim.x * totalBlock;
+		tid += blockDim.x * gridDim.x;
     }
 }
 
@@ -119,7 +117,7 @@ __global__ void equalization(const int* const p_inRepart, int* const p_outEquali
     }
 }
 
-float HistogramGPU::histogramEqualisation(const std::string p_loadPath, const std::string p_savePath, unsigned char* outGPU)
+float HistogramGPU::histogramEqualisation(const std::string p_loadPath, const std::string p_savePath, int* outGPU)
 {
 	Image* image = new Image();
 	image->load(p_loadPath);
@@ -132,15 +130,14 @@ float HistogramGPU::histogramEqualisation(const std::string p_loadPath, const st
 	float* devOutHue;
 	float* devOutSaturation;
 	int* devOutValue;
+	int *devOutHisto;
 
-	float* outHue = new float[imageSize];
-	float* outSaturation = new float[imageSize];
-	int* outValue = new int[imageSize];
+	int* outHisto = outGPU;
 
-	unsigned char *outPixels = outGPU; 
 
 	HANDLE_ERROR(cudaMalloc((void**)&devInPixels, 3 * imageSize * sizeof(unsigned char)));
 	HANDLE_ERROR(cudaMalloc((void**)&devOutPixels, 3 * imageSize * sizeof(unsigned char)));
+	HANDLE_ERROR(cudaMalloc((void**)&devOutHisto, 101 * sizeof(int)));
 
 	HANDLE_ERROR(cudaMalloc((void**)&devOutHue, imageSize * sizeof(float)));
 	HANDLE_ERROR(cudaMalloc((void**)&devOutSaturation, imageSize * sizeof(float)));
@@ -156,15 +153,11 @@ float HistogramGPU::histogramEqualisation(const std::string p_loadPath, const st
 
 	rgb2hsv <<<dimGrid,dimBlock>>>(devInPixels, imageSize, devOutHue, devOutSaturation, devOutValue);
 
-	hsv2rgb<<<dimGrid,dimBlock>>>(devOutPixels, imageSize, devOutHue, devOutSaturation, devOutValue);
+	histogram<<<dimGrid,dimBlock>>>(devOutValue, devOutHisto, 101);
+	//hsv2rgb<<<dimGrid,dimBlock>>>(devOutPixels, imageSize, devOutHue, devOutSaturation, devOutValue);
 	chr.stop();
 
-	HANDLE_ERROR(cudaMemcpy(outPixels, devOutPixels, 3 * imageSize * sizeof(unsigned char), cudaMemcpyDeviceToHost));
-	HANDLE_ERROR(cudaMemcpy(outHue, devOutHue, imageSize * sizeof(float), cudaMemcpyDeviceToHost));
-	HANDLE_ERROR(cudaMemcpy(outSaturation, devOutSaturation, imageSize * sizeof(float), cudaMemcpyDeviceToHost));
-	HANDLE_ERROR(cudaMemcpy(outValue, devOutValue, imageSize * sizeof(int), cudaMemcpyDeviceToHost));
-
-	std::cout << outValue[0] << std::endl;
+	HANDLE_ERROR(cudaMemcpy(outHisto, devOutHisto, 101 * sizeof(int), cudaMemcpyDeviceToHost));
 
 	HANDLE_ERROR(cudaFree(devInPixels));
 	HANDLE_ERROR(cudaFree(devOutPixels));

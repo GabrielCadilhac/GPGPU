@@ -1,60 +1,64 @@
 #include "histogramCPU.hpp"
-void rgb2hsv(unsigned char* p_pixels, int p_imageSize, float* p_hue, float* p_saturation, float* p_value)
+
+
+void HistogramCPU::rgb2hsv(unsigned char* p_pixel)
 {
-    for (int i = 0; i < p_imageSize; i++)
+    for (int i = 0; i < _imageSize; i++)
     {
         float* rgb = new float[3];
-        rgb[0] = static_cast<float>(p_pixels[3 * i])/255.f;
-        rgb[1] = static_cast<float>(p_pixels[3 * i + 1])/255.f;
-        rgb[2] = static_cast<float>(p_pixels[3 * i + 2]) / 255.f;
+        rgb[0] = static_cast<float>(p_pixel[3 * i])/255.f;
+        rgb[1] = static_cast<float>(p_pixel[3 * i + 1])/255.f;
+        rgb[2] = static_cast<float>(p_pixel[3 * i + 2]) / 255.f;
 
-        float Cmax = std::max(rgb[0], std::max(rgb[1], rgb[2]));
-        float Cmin = std::min(rgb[0], std::min(rgb[1], rgb[2]));
+        float Cmax = std::fmax(rgb[0], std::fmax(rgb[1], rgb[2]));
+        float Cmin = std::fmin(rgb[0], std::fmin(rgb[1], rgb[2]));
         float delta = Cmax - Cmin;
 
         if (delta == 0.f)
-            p_hue[i] = 0.f;
+            _hue[i] = 0.f;
         else if (Cmax == rgb[0])
-            p_hue[i] = 60.f * ((rgb[1] - rgb[2]) / delta);
+            _hue[i] = 60.f * ((rgb[1] - rgb[2]) / delta);
         else if (Cmax == rgb[1])
-            p_hue[i] = 60.f * (((rgb[2] - rgb[0]) / delta) + 2.f);
+            _hue[i] = 60.f * (((rgb[2] - rgb[0]) / delta) + 2.f);
         else if (Cmax == rgb[2])
-            p_hue[i] = 60.f * (((rgb[0] - rgb[1]) / delta) + 4.f);
+            _hue[i] = 60.f * (((rgb[0] - rgb[1]) / delta) + 4.f);
 
-        if (p_hue[i] < 0)
-            p_hue[i] += 360;
+        if (_hue[i] < 0)
+            _hue[i] += 360.f;
 
         if (Cmax > 0)
-            p_saturation[i] = delta / Cmax;
+            _saturation[i] = delta / Cmax;
         else
-            p_saturation[i] = 0.f;
+            _saturation[i] = 0.f;
 
-        p_value[i] = Cmax;
+        _value[i] = Cmax*100.f;
 
         delete[] rgb;
     }
 }
 
-void hsv2rgb(unsigned char* p_rgb, int p_imageSize, float* p_hue, float* p_saturation, float* p_value) {
-    for (int i = 0; i < p_imageSize; i++)
+void HistogramCPU::hsv2rgb(unsigned char* p_rgb)
+{
+    for (int i = 0; i < 1; i++)
     {
-        float C = p_saturation[i] * p_value[i];
-        float X = C * (1.f - std::abs(std::fmod(p_hue[i] / 60.f, 2.f) - 1.f));
-        float m = p_value[i] - C;
+        float v = static_cast<float>(_value[i]) / 100.f;
+        float C = _saturation[i] * v;
+        float X = C * (1.f - std::abs(std::fmod(_hue[i] / 60.f, 2.f) - 1.f));
+        float m = v - C;
 
         float r = 0.f;
         float g = 0.f;
         float b = 0.f;
 
-        if (p_hue[i] < 60)
+        if (_hue[i] < 60)
             r = C, g = X, b = 0;
-        else if (p_hue[i] < 120)
+        else if (_hue[i] < 120)
             r = X, g = C, b = 0;
-        else if (p_hue[i] < 180)
+        else if (_hue[i] < 180)
             r = 0, g = C, b = X;
-        else if (p_hue[i] < 240)
+        else if (_hue[i] < 240)
             r = 0, g = X, b = C;
-        else if (p_hue[i] < 300)
+        else if (_hue[i] < 300)
             r = X, g = 0, b = C;
         else
             r = C, g = 0, b = X;
@@ -67,14 +71,14 @@ void hsv2rgb(unsigned char* p_rgb, int p_imageSize, float* p_hue, float* p_satur
 
 int* HistogramCPU::histogram()
 {
-    int* hist = new int[101];
+    int* hist = new int[histoSize+1];
 
-    for (int i = 0; i <= 100; i++)
+    for (int i = 0; i <= histoSize; i++)
         hist[i] = 0;
 
     for (int i = 0; i < _imageSize; i++)
     {
-        int V = _value[i] * 100;
+        int V = _value[i];
         hist[V]++;
     }
 
@@ -104,7 +108,7 @@ float* HistogramCPU::equalization()
     return T;
 }
 
-float HistogramCPU::histogramEqualisation(const std::string &p_imageLoadPath, const std::string& p_imageSavePath, unsigned char* outCPU)
+float HistogramCPU::histogramEqualisation(const std::string &p_imageLoadPath, const std::string& p_imageSavePath, int* outCPU)
 {
     Image* image = new Image();
     image->load(p_imageLoadPath);
@@ -118,15 +122,17 @@ float HistogramCPU::histogramEqualisation(const std::string &p_imageLoadPath, co
     ChronoCPU chronoCPU;
     chronoCPU.start();
     rgb2hsv(image->_pixels);
-    chronoCPU.stop();
-    /*
-    float* newValues = equalization();
-    */
-    hsv2rgb(image->_pixels);
+   
+    int* histo = histogram();
+
+    //float* newValues = equalization();
     
-    for (int i = 0; i < _imageSize*3; ++i)
+    //hsv2rgb(image->_pixels);
+    chronoCPU.stop();
+
+    for (int i = 0; i < histoSize+1; ++i)
     {
-        outCPU[i] = image->_pixels[i];
+        outCPU[i] = histo[i];
     }
 
     image->save(p_imageSavePath);
