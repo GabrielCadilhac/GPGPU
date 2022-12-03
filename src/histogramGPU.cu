@@ -1,4 +1,5 @@
 #include "histogramGPU.hpp"
+#define HISTO_SIZE 101
 
 __global__ void rgb2hsv(unsigned char* p_devInPixels, int p_imageSize, float* p_outHue, float* p_outSaturation, int* p_outValue)
 {
@@ -71,49 +72,62 @@ __global__ void hsv2rgb(unsigned char* p_devOutPixels, int p_imageSize, float* p
 
 __global__ void histogram(const int* const p_inValue, int *p_outHisto, const int p_valueSize)
 {
-	int tid = (threadIdx.x + blockIdx.x * blockDim.x);
-	
-	while (tid < p_valueSize)
+	int tid = threadIdx.x;
+	int N = 1;
+
+    __shared__ int sharedHisto[HISTO_SIZE];
+
+    while (tid < HISTO_SIZE)
     {
-        atomicAdd(&p_outHisto[p_inValue[tid]], 1);
-		tid += blockDim.x * gridDim.x;
+        sharedHisto[tid] = 0;
+        tid += blockDim.x;
+    }
+
+    __syncthreads();
+    tid = threadIdx.x + blockIdx.x * blockDim.x;
+
+    while (tid < p_valueSize)
+    {
+        for (int i = tid*N; i < N*(tid+1) && i < p_valueSize; i++)
+        {
+            atomicAdd(sharedHisto+p_inValue[i], 1);
+        }
+        tid += gridDim.x * blockDim.x;
+    }
+
+    __syncthreads();
+    tid = threadIdx.x;
+
+    while (tid < HISTO_SIZE)
+    {
+        atomicAdd(p_outHisto+tid, sharedHisto[tid]);
+        tid += blockDim.x;
     }
 }
 
-__global__ void repart(int* p_inHisto, int* p_outRepart, const int p_histoSize)
+__global__ void repart(int* p_inHisto, int* p_inValue, int* p_outRepart, int p_imageSize)
 {
-	extern __shared__ int sharedHisto[];
+	int tid = threadIdx.x + blockDim.x * blockIdx.x;
+	int offset = 0;
 
-	int bid = blockIdx.x + gridDim.x * blockIdx.y; // Index d'un block dans une grille 2D
-	int tid = threadIdx.x; // Index du thread global (dans une grille 2D)
-	int tidGlobal = (threadIdx.x + bid * blockDim.x);
-
-	sharedHisto[tid] = p_inHisto[tidGlobal];
-	__syncthreads();
-
-	for (int i = 1; i < blockDim.x; i *= 2)
+	while (offset < p_imageSize && tid >= offset && tid < p_imageSize)
 	{
-		if (tid % (2*i) == 0)
-			sharedHisto[tid] += sharedHisto[tid - i];
-		__syncthreads();
+		int l = p_inValue[tid-offset];
+		p_outRepart[tid] += p_inHisto[l];
+		offset++;
 	}
-
-	if (tid == 0) 
-		p_outRepart[blockIdx.x * blockIdx.y] = sharedHisto[0];
 }
 
 __global__ void equalization(const int* const p_inRepart, int* const p_outEqualization, const int p_imageSize)
 {
 	const float LLn = 99.f / (100.f * p_imageSize);
 
-	int bid = blockIdx.x + gridDim.x * blockIdx.y; // Index d'un block dans une grille 2D
-	int totalBlock = gridDim.x * gridDim.y; // Nombre de block total
-	int tid = (threadIdx.x + bid * blockDim.x); // Index du thread global (dans une grille 2D)
+	int tid = (threadIdx.x + blockIdx.x * blockDim.x);
 
 	while (tid < p_imageSize);
 	{
         p_outEqualization[tid] = (LLn * p_inRepart[tid]);
-		tid += blockDim.x * totalBlock;
+		tid += blockDim.x * gridDim.x;
     }
 }
 
@@ -130,18 +144,24 @@ float HistogramGPU::histogramEqualisation(const std::string p_loadPath, const st
 	float* devOutHue;
 	float* devOutSaturation;
 	int* devOutValue;
-	int *devOutHisto;
+	int* devOutHisto;
+	int* devOutRepart;
+	int* devOutEqualisation;
 
-	int* outHisto = outGPU;
+	int* outHisto = new int[HISTO_SIZE];
+	int* outPixels = outGPU;
 
 
 	HANDLE_ERROR(cudaMalloc((void**)&devInPixels, 3 * imageSize * sizeof(unsigned char)));
 	HANDLE_ERROR(cudaMalloc((void**)&devOutPixels, 3 * imageSize * sizeof(unsigned char)));
-	HANDLE_ERROR(cudaMalloc((void**)&devOutHisto, 101 * sizeof(int)));
 
 	HANDLE_ERROR(cudaMalloc((void**)&devOutHue, imageSize * sizeof(float)));
 	HANDLE_ERROR(cudaMalloc((void**)&devOutSaturation, imageSize * sizeof(float)));
 	HANDLE_ERROR(cudaMalloc((void**)&devOutValue, imageSize * sizeof(int)));
+
+	HANDLE_ERROR(cudaMalloc((void**)&devOutHisto, HISTO_SIZE * sizeof(int)));
+	HANDLE_ERROR(cudaMalloc((void**)&devOutRepart, imageSize * sizeof(int)));
+	HANDLE_ERROR(cudaMalloc((void**)&devOutEqualisation, imageSize * sizeof(int)));
 
 	HANDLE_ERROR(cudaMemcpy(devInPixels, image->_pixels, 3 * imageSize * sizeof(unsigned char), cudaMemcpyHostToDevice));
 
@@ -153,17 +173,27 @@ float HistogramGPU::histogramEqualisation(const std::string p_loadPath, const st
 
 	rgb2hsv <<<dimGrid,dimBlock>>>(devInPixels, imageSize, devOutHue, devOutSaturation, devOutValue);
 
-	histogram<<<dimGrid,dimBlock>>>(devOutValue, devOutHisto, 101);
+	histogram<<<dimGrid,dimBlock>>>(devOutValue, devOutHisto, imageSize);
+	
+	repart<<<dimGrid,dimBlock>>>(devOutHisto,devOutValue,devOutRepart, imageSize);
+
 	//hsv2rgb<<<dimGrid,dimBlock>>>(devOutPixels, imageSize, devOutHue, devOutSaturation, devOutValue);
+	
 	chr.stop();
 
-	HANDLE_ERROR(cudaMemcpy(outHisto, devOutHisto, 101 * sizeof(int), cudaMemcpyDeviceToHost));
+	HANDLE_ERROR(cudaMemcpy(outHisto, devOutHisto, HISTO_SIZE * sizeof(int), cudaMemcpyDeviceToHost));
+	HANDLE_ERROR(cudaMemcpy(outPixels, devOutRepart, imageSize * sizeof(int), cudaMemcpyDeviceToHost));
 
 	HANDLE_ERROR(cudaFree(devInPixels));
 	HANDLE_ERROR(cudaFree(devOutPixels));
+	HANDLE_ERROR(cudaFree(devOutHisto));
+	HANDLE_ERROR(cudaFree(devOutEqualisation));
+	HANDLE_ERROR(cudaFree(devOutRepart));
 	HANDLE_ERROR(cudaFree(devOutHue));
 	HANDLE_ERROR(cudaFree(devOutSaturation));
 	HANDLE_ERROR(cudaFree(devOutValue));
+
+	std::cout << outHisto[0] << std::endl;
 
 	image->save(p_savePath);
 

@@ -10,8 +10,8 @@ int main(int argc, char const *argv[])
     image->load("./images/chevre.png");
     const int imageSize = image->_width * image->_height;
 
-    int *outCPU = new int[101];
-    int *outGPU = new int[101];
+    int *outCPU = new int[imageSize];
+    int *outGPU = new int[imageSize];
 
     float cpuTime = 0.f;
     float gpuTime = 0.f;
@@ -37,7 +37,7 @@ int main(int argc, char const *argv[])
 	std::cout << "              Checking results		      "	<< std::endl;
 	std::cout << "============================================"	<< std::endl;
 
-	for ( int i = 0; i < 101; ++i ) 
+	for ( int i = 0; i < imageSize; ++i ) 
 	{
         // Result may be slightly different between CPU and GPU because of the floating-point calculation
         if ( fabsf(outCPU[i] - outGPU[i]) > 2)  { 

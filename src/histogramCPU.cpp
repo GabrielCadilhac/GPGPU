@@ -69,31 +69,35 @@ void HistogramCPU::hsv2rgb(unsigned char* p_rgb)
     }
 }
 
-int* HistogramCPU::histogram()
+void HistogramCPU::histogram()
 {
-    int* hist = new int[histoSize+1];
+    _histo = new int[histoSize+1];
 
     for (int i = 0; i <= histoSize; i++)
-        hist[i] = 0;
+        _histo[i] = 0;
 
     for (int i = 0; i < _imageSize; i++)
     {
         int V = _value[i];
-        hist[V]++;
+        _histo[V]++;
     }
-
-    return hist;
 }
 
-float HistogramCPU::repart(int* p_hist, int p_l)
+void HistogramCPU::repart()
 {
-    float r = 0.f;
-    for (int k = 0; k <= p_l; k++)
-        r += p_hist[k];
+    _repart = new int[_imageSize];
     
-    return r;
+    int l = _value[0];
+    _repart[0] = _histo[l]; 
+
+    for (int i = 1; i < _imageSize; i++)
+    {
+        l = _value[i];
+        _repart[i] = _repart[i-1] + _histo[l];    
+    }
 }
 
+/*
 float* HistogramCPU::equalization()
 {
     int* hist = histogram();
@@ -107,6 +111,7 @@ float* HistogramCPU::equalization()
 
     return T;
 }
+*/
 
 float HistogramCPU::histogramEqualisation(const std::string &p_imageLoadPath, const std::string& p_imageSavePath, int* outCPU)
 {
@@ -122,17 +127,21 @@ float HistogramCPU::histogramEqualisation(const std::string &p_imageLoadPath, co
     ChronoCPU chronoCPU;
     chronoCPU.start();
     rgb2hsv(image->_pixels);
-   
-    int* histo = histogram();
+    
+    histogram();
 
+    repart();
+    
     //float* newValues = equalization();
     
     //hsv2rgb(image->_pixels);
     chronoCPU.stop();
 
-    for (int i = 0; i < histoSize+1; ++i)
+    std::cout << _histo[0] << std::endl;
+
+    for (int i = 0; i < _imageSize; ++i)
     {
-        outCPU[i] = histo[i];
+        outCPU[i] = _repart[i];
     }
 
     image->save(p_imageSavePath);
