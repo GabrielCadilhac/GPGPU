@@ -22,7 +22,7 @@ class HistogramCPU {
 		int histoSize = 100;
 		int* _histo = nullptr;
 		int* _repart = nullptr;
-		int* _equal = nullptr;
+		float* _equal = nullptr;
 
 		void rgb2hsv(unsigned char* p_pixels);
 		void hsv2rgb(unsigned char* p_rgb);

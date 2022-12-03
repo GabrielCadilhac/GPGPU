@@ -39,9 +39,10 @@ void HistogramCPU::rgb2hsv(unsigned char* p_pixel)
 
 void HistogramCPU::hsv2rgb(unsigned char* p_rgb)
 {
+    std::cout << _equal[0] << std::endl;  
     for (int i = 0; i < _imageSize; i++)
     {
-        float v = static_cast<float>(_equal[i]) / 100.f;
+        float v = _equal[i];
         float C = _saturation[i] * v;
         float X = C * (1.f - std::abs(std::fmod(_hue[i] / 60.f, 2.f) - 1.f));
         float m = v - C;
@@ -85,29 +86,38 @@ void HistogramCPU::histogram()
 
 void HistogramCPU::repart()
 {
-    _repart = new int[_imageSize];
+    _repart = new int[histoSize+1];
     
-    int l = _value[0];
-    _repart[0] = _histo[l]; 
+    _repart[0] = _histo[0];
 
-    for (int i = 1; i < _imageSize; i++)
+    for (int i = 1; i <= histoSize; i++)
     {
-        l = _value[i];
-        _repart[i] = _repart[i-1] + _histo[l];    
+        _repart[i] = _repart[i-1] + _histo[i];    
     }
+
+    std::cout << "repart" << _repart[histoSize] << std::endl; 
 }
 
 void HistogramCPU::equalization()
 {
     histogram();
+
+    int sum = 0;
+    for(int i = 0; i < 101; i++)
+        sum += _histo[i];
+
     repart();
 
-    _equal = new int[_imageSize];
+    _equal = new float[_imageSize];
+    for (int i = 0; i < _imageSize; i++)
+        _equal[i] = 0.f;
+
     float LLn = 99.f / (100.f * _imageSize);
 
     for (int i = 0; i < _imageSize; i++)
     {
-        _equal[i] = (LLn * _repart[i]);
+        int v = _value[i];
+        _equal[i] = (LLn * _repart[v]);
     }
 
 }
@@ -134,9 +144,9 @@ float HistogramCPU::histogramEqualisation(const std::string &p_imageLoadPath, co
     
     chronoCPU.stop();
 
-    std::cout << _histo[0] << std::endl;
+    std::cout << _imageSize << std::endl;
 
-    for (int i = 0; i < _imageSize; ++i)
+    for (int i = 0; i < 101; ++i)
     {
         outCPU[i] = _repart[i];
     }
