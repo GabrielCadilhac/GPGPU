@@ -1,6 +1,8 @@
 #include "histogramGPU.hpp"
 #define HISTO_SIZE 101
 
+__constant__ int repartition[HISTO_SIZE];
+
 __global__ void rgb2hsv(unsigned char* p_devInPixels, int p_imageSize, float* p_outHue, float* p_outSaturation, int* p_outValue)
 {
 	int tid = threadIdx.x + blockIdx.x * blockDim.x;
@@ -105,20 +107,19 @@ __global__ void histogram(const int* const p_inValue, int *p_outHisto, const int
     }
 }
 
-__global__ void repart(int* p_inHisto, int* p_inValue, int* p_outRepart, int p_imageSize)
+__global__ void repart(int* p_inHisto, int* p_inValue, int* p_outRepart)
 {
 	int tid = threadIdx.x + blockDim.x * blockIdx.x;
 	int offset = 0;
 
-	while (offset < p_imageSize && tid >= offset && tid < p_imageSize)
+	while (offset < HISTO_SIZE && tid >= offset && tid < HISTO_SIZE)
 	{
-		int l = p_inValue[tid-offset];
-		p_outRepart[tid] += p_inHisto[l];
+		p_outRepart[tid] += p_inHisto[tid-offset];
 		offset++;
 	}
 }
 
-__global__ void equalization(const int* const p_inRepart, int* const p_outEqualization, const int p_imageSize)
+__global__ void equalization(const int* const p_inValue, int* const p_outEqualization, const int p_imageSize)
 {
 	const float LLn = 99.f / (100.f * p_imageSize);
 
@@ -126,7 +127,8 @@ __global__ void equalization(const int* const p_inRepart, int* const p_outEquali
 
 	while (tid < p_imageSize);
 	{
-        p_outEqualization[tid] = (LLn * p_inRepart[tid]);
+		int v = p_inValue[tid];
+        p_outEqualization[tid] = (LLn * repartition[v]);
 		tid += blockDim.x * gridDim.x;
     }
 }
@@ -148,9 +150,8 @@ float HistogramGPU::histogramEqualisation(const std::string p_loadPath, const st
 	int* devOutRepart;
 	int* devOutEqualisation;
 
-	int* outHisto = new int[HISTO_SIZE];
+	int* outRepart = new int[HISTO_SIZE];
 	int* outPixels = outGPU;
-
 
 	HANDLE_ERROR(cudaMalloc((void**)&devInPixels, 3 * imageSize * sizeof(unsigned char)));
 	HANDLE_ERROR(cudaMalloc((void**)&devOutPixels, 3 * imageSize * sizeof(unsigned char)));
@@ -160,14 +161,15 @@ float HistogramGPU::histogramEqualisation(const std::string p_loadPath, const st
 	HANDLE_ERROR(cudaMalloc((void**)&devOutValue, imageSize * sizeof(int)));
 
 	HANDLE_ERROR(cudaMalloc((void**)&devOutHisto, HISTO_SIZE * sizeof(int)));
-	HANDLE_ERROR(cudaMalloc((void**)&devOutRepart, imageSize * sizeof(int)));
+	HANDLE_ERROR(cudaMalloc((void**)&devOutRepart, HISTO_SIZE * sizeof(int)));
 	HANDLE_ERROR(cudaMalloc((void**)&devOutEqualisation, imageSize * sizeof(int)));
 
 	HANDLE_ERROR(cudaMemcpy(devInPixels, image->_pixels, 3 * imageSize * sizeof(unsigned char), cudaMemcpyHostToDevice));
 
-	dim3 dimBlock(1024);
+	dim3 dimBlock(512);
 	dim3 dimGrid((imageSize + dimBlock.x - 1) / dimBlock.x);
 
+	std::cout << dimGrid.x * dimBlock.x << std::endl;
 	ChronoGPU chr;
 	chr.start();
 
@@ -175,14 +177,18 @@ float HistogramGPU::histogramEqualisation(const std::string p_loadPath, const st
 
 	histogram<<<dimGrid,dimBlock>>>(devOutValue, devOutHisto, imageSize);
 	
-	repart<<<dimGrid,dimBlock>>>(devOutHisto,devOutValue,devOutRepart, imageSize);
+	repart<<<dimGrid,dimBlock>>>(devOutHisto,devOutValue,devOutRepart);
 
-	//hsv2rgb<<<dimGrid,dimBlock>>>(devOutPixels, imageSize, devOutHue, devOutSaturation, devOutValue);
+	HANDLE_ERROR(cudaMemcpy(outRepart, devOutRepart, HISTO_SIZE * sizeof(int), cudaMemcpyDeviceToHost));
+	HANDLE_ERROR(cudaMemcpyToSymbol(repartition, devOutRepart,  HISTO_SIZE * sizeof(int)));
+
+	equalization<<<dimGrid,dimBlock>>>(devOutValue, devOutEqualisation, imageSize);
+
+	//hsv2rgb<<<dimGrid,dimBlock>>>(devOutPixels, imageSize, devOutHue, devOutSaturation, devOutEqualisation);
 	
 	chr.stop();
-
-	HANDLE_ERROR(cudaMemcpy(outHisto, devOutHisto, HISTO_SIZE * sizeof(int), cudaMemcpyDeviceToHost));
-	HANDLE_ERROR(cudaMemcpy(outPixels, devOutRepart, imageSize * sizeof(int), cudaMemcpyDeviceToHost));
+	
+	HANDLE_ERROR(cudaMemcpy(outPixels, devOutEqualisation, imageSize * sizeof(int), cudaMemcpyDeviceToHost));
 
 	HANDLE_ERROR(cudaFree(devInPixels));
 	HANDLE_ERROR(cudaFree(devOutPixels));
@@ -192,8 +198,6 @@ float HistogramGPU::histogramEqualisation(const std::string p_loadPath, const st
 	HANDLE_ERROR(cudaFree(devOutHue));
 	HANDLE_ERROR(cudaFree(devOutSaturation));
 	HANDLE_ERROR(cudaFree(devOutValue));
-
-	std::cout << outHisto[0] << std::endl;
 
 	image->save(p_savePath);
 
