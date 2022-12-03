@@ -22,13 +22,14 @@ class HistogramCPU {
 		int histoSize = 100;
 		int* _histo = nullptr;
 		int* _repart = nullptr;
+		int* _equal = nullptr;
 
 		void rgb2hsv(unsigned char* p_pixels);
 		void hsv2rgb(unsigned char* p_rgb);
 	
 		void histogram();
 		void repart();
-		float* equalization();
+		void equalization();
 
 		float histogramEqualisation(const std::string & p_imageLoadPath, const std::string & p_imageSavePath, int* outCPU);
 };
