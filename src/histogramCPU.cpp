@@ -39,9 +39,10 @@ void HistogramCPU::rgb2hsv(unsigned char* p_pixel)
 
 void HistogramCPU::hsv2rgb(unsigned char* p_rgb)
 {
+    std::cout << _equal[0] << std::endl;  
     for (int i = 0; i < _imageSize; i++)
     {
-        float v = static_cast<float>(_equal[i]) / 100.f;
+        float v = _equal[i];
         float C = _saturation[i] * v;
         float X = C * (1.f - std::abs(std::fmod(_hue[i] / 60.f, 2.f) - 1.f));
         float m = v - C;
@@ -93,11 +94,18 @@ void HistogramCPU::repart()
     {
         _repart[i] = _repart[i-1] + _histo[i];    
     }
+
+    std::cout << "repart" << _repart[histoSize] << std::endl; 
 }
 
 void HistogramCPU::equalization()
 {
     histogram();
+
+    int sum = 0;
+    for(int i = 0; i < 101; i++)
+        sum += _histo[i];
+
     repart();
 
     _equal = new float[_imageSize];

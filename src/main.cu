@@ -24,8 +24,9 @@ int main(int argc, char const *argv[])
     HistogramCPU histCPU;
     cpuTime = histCPU.histogramEqualisation("./images/chevre.png", "./images/chevreCPU.png", outCPU);
     std::cout << "Time : " << cpuTime << std::endl;
+    
     // GPU CUDA
-	std::cout << "============================================"	<< std::endl;
+	/*std::cout << "============================================"	<< std::endl;
 	std::cout << "         Parallel version on GPU            "	<< std::endl;
 	std::cout << "============================================"	<< std::endl;
 
@@ -47,7 +48,7 @@ int main(int argc, char const *argv[])
             exit( EXIT_FAILURE );
         }
 	}
-	std::cout << "Congratulations! Job's done!" << std::endl << std::endl;
+	std::cout << "Congratulations! Job's done!" << std::endl << std::endl;*/
 
     delete[] outCPU;
     delete[] outGPU;
