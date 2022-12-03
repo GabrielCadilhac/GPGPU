@@ -85,15 +85,13 @@ void HistogramCPU::histogram()
 
 void HistogramCPU::repart()
 {
-    _repart = new int[_imageSize];
+    _repart = new int[101];
     
-    int l = _value[0];
-    _repart[0] = _histo[l]; 
+    _repart[0] = _histo[0]; 
 
-    for (int i = 1; i < _imageSize; i++)
+    for (int i = 1; i < 101; i++)
     {
-        l = _value[i];
-        _repart[i] = _repart[i-1] + _histo[l];    
+        _repart[i] = _repart[i-1] + _histo[i];    
     }
 }
 
@@ -102,16 +100,15 @@ void HistogramCPU::equalization()
     histogram();
     repart();
 
-    _equal = new int[_imageSize];
+    _equal = new float[_imageSize];
     float LLn = 99.f / (100.f * _imageSize);
 
     for (int i = 0; i < _imageSize; i++)
     {
-        _equal[i] = (LLn * _repart[i]);
+        int v = _value[i];
+        _equal[i] = (LLn * _repart[v]);
     }
-
 }
-
 
 float HistogramCPU::histogramEqualisation(const std::string &p_imageLoadPath, const std::string& p_imageSavePath, int* outCPU)
 {
@@ -134,11 +131,9 @@ float HistogramCPU::histogramEqualisation(const std::string &p_imageLoadPath, co
     
     chronoCPU.stop();
 
-    std::cout << _histo[0] << std::endl;
-
     for (int i = 0; i < _imageSize; ++i)
     {
-        outCPU[i] = _repart[i];
+        outCPU[i] = _equal[i];
     }
 
     image->save(p_imageSavePath);

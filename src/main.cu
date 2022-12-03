@@ -40,7 +40,7 @@ int main(int argc, char const *argv[])
 	for ( int i = 0; i < imageSize; ++i ) 
 	{
         // Result may be slightly different between CPU and GPU because of the floating-point calculation
-        if ( fabsf(outCPU[i] - outGPU[i]) > 2)  { 
+        if ( fabsf(outCPU[i] - outGPU[i]) > 1)  { 
             std::cerr << "Error for index " << i <<" :" << std::endl;
             std::cerr << "\t CPU: [" << static_cast<int>(outCPU[i]) << "]" << std::endl;
             std::cerr << "\t GPU: [" << static_cast<int>(outGPU[i]) << "]" << std::endl;
