@@ -150,8 +150,8 @@ __global__ void equalization(int * p_inValue, float * p_outEqualization, const i
 
 	for(int id = tid; id < p_imageSize; id += blockDim.x * gridDim.x)
 	{
-		int v = p_inValue[tid];
-        p_outEqualization[tid] = (LLn * GPU_REPARTITION[v]);
+		int v = p_inValue[id];
+        p_outEqualization[id] = (LLn * GPU_REPARTITION[v]);
     }
 }
 
