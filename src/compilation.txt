@@ -1,0 +1,1 @@
+nvcc main.cu histogramGPU.CU histogramCPU.cpp utils/chronoCPU.cpp utils/chronoGPU.cu utils/image.cpp -O3 -o main 
