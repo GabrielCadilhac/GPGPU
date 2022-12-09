@@ -11,6 +11,7 @@
 int main(int argc, char const *argv[])
 {
     int N = 4;
+    int blockSize = 512;
 
     if(argc <= 1)
     {
@@ -22,6 +23,11 @@ int main(int argc, char const *argv[])
         {
             if (sscanf(argv[++i], "%i", &N) != 1)
                 std::cout << "Error argument N" << std::endl;
+        }
+        else if ( !strcmp(argv[i], "-b"))
+        {
+            if (sscanf(argv[++i], "%i", &blockSize) != 1)
+                std::cout << "Error argument b" << std::endl;
         }
     }
 
@@ -51,7 +57,7 @@ int main(int argc, char const *argv[])
 
     float gpuTime = 0.f;
     HistogramGPU histogramGPU(IMAGE_PATH);
-    gpuTime = histogramGPU.histogramEqualisation(IMAGE_PATH, OUT_GPU_IMAGE_PATH, outGPU, N);
+    gpuTime = histogramGPU.histogramEqualisation(IMAGE_PATH, OUT_GPU_IMAGE_PATH, outGPU, N, blockSize);
     std::cout << "Time : " << gpuTime << std::endl;
 
     // CHECK RESULT

@@ -1,1 +1,14 @@
-======== Error: Application returned non-zero code 1
+==52719== NVPROF is profiling process 52719, command: ./main -N 4 -b 128
+==52719== Profiling application: ./main -N 4 -b 128
+==52719== Profiling result:
+"Start","Duration","Grid X","Grid Y","Grid Z","Block X","Block Y","Block Z","Registers Per Thread","Static SMem","Dynamic SMem","Size","Throughput","SrcMemType","DstMemType","Device","Context","Stream","Name","Correlation_ID"
+ms,us,,,,,,,,B,B,MB,GB/s,,,,,,,
+294.832027,62.879000,,,,,,,,,,0.732594,11.377779,"Pageable","Device","NVIDIA Quadro P620 (0)","1","7","[CUDA memcpy HtoD]",122
+294.902458,127.710000,2001,1,1,128,1,1,22,0,0,,,,,"NVIDIA Quadro P620 (0)","1","7","rgb2hsv(unsigned char*, int, float*, float*, int*)",123
+295.030680,67.102000,2001,1,1,128,1,1,15,404,0,,,,,"NVIDIA Quadro P620 (0)","1","7","histogramShared(int*, int*, int, unsigned int)",124
+295.098391,24.671000,1,1,1,128,1,1,8,0,0,,,,,"NVIDIA Quadro P620 (0)","1","7","repart(int*, int*)",125
+295.123606,3.264000,,,,,,,,,,0.000385,0.115274,"Device","Device","NVIDIA Quadro P620 (0)","1","7","[CUDA memcpy DtoD]",126
+295.127350,46.399000,2001,1,1,128,1,1,11,0,0,,,,,"NVIDIA Quadro P620 (0)","1","7","equalizationConstant(int*, float*, int)",127
+295.174261,69.247000,2001,1,1,128,1,1,13,0,0,,,,,"NVIDIA Quadro P620 (0)","1","7","hsv2rgb(unsigned char*, int, float*, float*, float*)",128
+295.244916,61.823000,,,,,,,,,,0.732594,11.572123,"Device","Pageable","NVIDIA Quadro P620 (0)","1","7","[CUDA memcpy DtoH]",129
+295.376626,81.822000,,,,,,,,,,0.976791,11.658207,"Device","Pageable","NVIDIA Quadro P620 (0)","1","7","[CUDA memcpy DtoH]",130
