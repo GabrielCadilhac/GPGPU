@@ -35,7 +35,7 @@ HistogramGPU::~HistogramGPU()
 
 __global__ void rgb2hsv(unsigned char* p_devInPixels, int p_imageSize, float* p_outHue, float* p_outSaturation, int* p_outValue)
 {
-	int tid = threadIdx.x + blockIdx.x * blockDim.x;
+	unsigned int tid = threadIdx.x + blockIdx.x * blockDim.x;
 	
 	for(int id = tid; id < p_imageSize; id += blockDim.x * gridDim.x)
 	{
@@ -47,8 +47,8 @@ __global__ void rgb2hsv(unsigned char* p_devInPixels, int p_imageSize, float* p_
         float Cmin = fmin(inRed, fmin(inGreen, inBlue));
         float delta = Cmax - Cmin;
 	
-        if (delta == 0.0f)
-            p_outHue[id] = 0.f;
+        if (delta == 0.f)
+			p_outHue[id] = 0.f;
         else if (Cmax == inRed)
             p_outHue[id] = 60.f * ((inGreen - inBlue) / delta);
         else if (Cmax == inGreen)
@@ -56,21 +56,17 @@ __global__ void rgb2hsv(unsigned char* p_devInPixels, int p_imageSize, float* p_
         else if (Cmax == inBlue)
             p_outHue[id] = 60.f * (((inRed - inGreen) / delta) + 4.f);
 
-		if (p_outHue[id] < 0)
+		while (p_outHue[id] < 0)
 			p_outHue[id] += 360.f;
 
-        if (Cmax > 0)
-			p_outSaturation[id] = delta / Cmax;
-        else
-			p_outSaturation[id] = 0.0f;
-
+		p_outSaturation[id] = delta / Cmax;
         p_outValue[id] = Cmax * 100;
 	}
 }
 
 __global__ void hsv2rgb(unsigned char* p_devOutPixels, int p_imageSize, float* p_inHue, float* p_inSaturation, float* p_inValue )
 {
-	int tid = threadIdx.x + blockIdx.x * blockDim.x;
+	unsigned int tid = threadIdx.x + blockIdx.x * blockDim.x;
 	
 	for(int id = tid; id < p_imageSize; id += blockDim.x * gridDim.x)
 	{
@@ -79,9 +75,9 @@ __global__ void hsv2rgb(unsigned char* p_devOutPixels, int p_imageSize, float* p
         float X = C * (1.f - abs(fmod(p_inHue[id] / 60.f, 2.f) - 1.f));
         float m = v - C;
 
-        float r = 0.f;
+        float r = C;
         float g = 0.f;
-        float b = 0.f;
+        float b = X;
 
         if (p_inHue[id] < 60)
             r = C, g = X, b = 0;
@@ -93,8 +89,6 @@ __global__ void hsv2rgb(unsigned char* p_devOutPixels, int p_imageSize, float* p
             r = 0, g = X, b = C;
         else if (p_inHue[id] < 300)
             r = X, g = 0, b = C;
-		else
-            r = C, g = 0, b = X;
 
         p_devOutPixels[3 * id]     = static_cast<unsigned char>(255.0f * (r + m));
         p_devOutPixels[3 * id + 1] = static_cast<unsigned char>(255.0f * (g + m));
@@ -104,17 +98,16 @@ __global__ void hsv2rgb(unsigned char* p_devOutPixels, int p_imageSize, float* p
 
 __global__ void histogram(int * p_inValue, int * p_outHisto, int p_valueSize)
 {
-	__shared__ int sharedHisto[HISTO_SIZE];
-	int tid = threadIdx.x;
-	int N = 1;
+	unsigned int tid = threadIdx.x;
 
-    for(int id = tid; id < HISTO_SIZE; id += blockDim.x)
+	__shared__ unsigned int sharedHisto[HISTO_SIZE];
+	for(int id = tid; id < HISTO_SIZE; id += blockDim.x)
     {
         sharedHisto[id] = 0;
     }
-    __syncthreads();
 
     tid = threadIdx.x + blockIdx.x * blockDim.x;
+	unsigned int N = 1;
     for(int id = tid; id < p_valueSize; id += gridDim.x * blockDim.x)
     {
         for (int i = id*N; i < N*(id+1) && i < p_valueSize; i++)
@@ -133,8 +126,8 @@ __global__ void histogram(int * p_inValue, int * p_outHisto, int p_valueSize)
 
 __global__ void repart(int * p_inHisto, int * p_inValue, int * p_outRepart)
 {
-	int tid = threadIdx.x + blockDim.x * blockIdx.x;
-	int offset = 0;
+	unsigned int tid = threadIdx.x + blockDim.x * blockIdx.x;
+	unsigned int offset = 0;
 
 	while (offset < HISTO_SIZE && tid >= offset && tid < HISTO_SIZE)
 	{
@@ -146,9 +139,9 @@ __global__ void repart(int * p_inHisto, int * p_inValue, int * p_outRepart)
 __global__ void equalization(int * p_inValue, float * p_outEqualization, const int p_imageSize)
 {
 	const float LLn = 99.f / (100.f * p_imageSize);
-	int tid = (threadIdx.x + blockIdx.x * blockDim.x);
+	unsigned int tid = (threadIdx.x + blockIdx.x * blockDim.x);
 
-	for(int id = tid; id < p_imageSize; id += blockDim.x * gridDim.x)
+	for(unsigned int id = tid; id < p_imageSize; id += blockDim.x * gridDim.x)
 	{
 		int v = p_inValue[id];
         p_outEqualization[id] = (LLn * GPU_REPARTITION[v]);
@@ -169,7 +162,6 @@ float HistogramGPU::histogramEqualisation(const std::string & p_loadPath, const 
 	rgb2hsv <<<dimGrid,dimBlock>>>(_devInPixels, _imageSize, _devOutHue, _devOutSaturation, _devOutValue);
 	histogram<<<dimGrid,dimBlock>>>(_devOutValue, _devOutHisto, _imageSize);
 	repart<<<dimGrid,dimBlock>>>(_devOutHisto, _devOutValue, _devOutRepart);
-	HANDLE_ERROR(cudaMemcpy(_outRepart, _devOutRepart, HISTO_SIZE * sizeof(int), cudaMemcpyDeviceToHost));
 	HANDLE_ERROR(cudaMemcpyToSymbol(GPU_REPARTITION, _devOutRepart,  HISTO_SIZE * sizeof(int)));
 	equalization<<<dimGrid,dimBlock>>>(_devOutValue, _devOutEqualisation, _imageSize);
 	hsv2rgb<<<dimGrid,dimBlock>>>(_devOutPixels, _imageSize, _devOutHue, _devOutSaturation, _devOutEqualisation);

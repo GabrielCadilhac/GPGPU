@@ -24,9 +24,9 @@ HistogramCPU::~HistogramCPU()
 
 void HistogramCPU::rgb2hsv(unsigned char * p_pixel)
 {
+    float rgb[3];
     for (unsigned int i = 0; i < _imageSize; i++)
     {
-        float rgb[3];
         rgb[0] = static_cast<float>(p_pixel[3 * i]) / 255.f;
         rgb[1] = static_cast<float>(p_pixel[3 * i + 1]) / 255.f;
         rgb[2] = static_cast<float>(p_pixel[3 * i + 2]) / 255.f;
@@ -44,14 +44,10 @@ void HistogramCPU::rgb2hsv(unsigned char * p_pixel)
         else if (Cmax == rgb[2])
             _hue[i] = 60.f * (((rgb[0] - rgb[1]) / delta) + 4.f);
 
-        if (_hue[i] < 0)
+        while (_hue[i] < 0)
             _hue[i] += 360.f;
 
-        if (Cmax > 0)
-            _saturation[i] = delta / Cmax;
-        else
-            _saturation[i] = 0.f;
-
+        _saturation[i] = delta / Cmax;
         _value[i] = Cmax*100.f;
     }
 }
@@ -65,9 +61,9 @@ void HistogramCPU::hsv2rgb(unsigned char* p_rgb)
         float X = C * (1.f - std::abs(std::fmod(_hue[i] / 60.f, 2.f) - 1.f));
         float m = v - C;
 
-        float r = 0.f;
+        float r = C;
         float g = 0.f;
-        float b = 0.f;
+        float b = X;
 
         if (_hue[i] < 60)
             r = C, g = X, b = 0;
@@ -79,8 +75,6 @@ void HistogramCPU::hsv2rgb(unsigned char* p_rgb)
             r = 0, g = X, b = C;
         else if (_hue[i] < 300)
             r = X, g = 0, b = C;
-        else
-            r = C, g = 0, b = X;
 
         p_rgb[3*i] = static_cast<unsigned char>(255 * (r + m));
         p_rgb[3*i+1] = static_cast<unsigned char>(255 * (g + m));

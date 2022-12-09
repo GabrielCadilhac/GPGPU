@@ -17,7 +17,6 @@ class HistogramGPU {
 
 		// CPU side
 		Image _image;
-		int _outRepart[HISTO_SIZE];
 		float * _equal;
 		int _imageSize;
 
