@@ -35,7 +35,7 @@ class HistogramGPU {
 		HistogramGPU(const std::string & p_loadPath);
 		~HistogramGPU();
 
-		float histogramEqualisation(const std::string & p_loadPath, const std::string & p_SavePath, int* outGPU);
+		float histogramEqualisation(const std::string & p_loadPath, const std::string & p_SavePath, int* outGPU, int N);
 
 };
 

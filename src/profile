@@ -1,15 +1,1 @@
-==19872== NVPROF is profiling process 19872, command: .\main.exe
-==19872== Profiling application: .\main.exe
-==19872== Profiling result:
-"Start","Duration","Grid X","Grid Y","Grid Z","Block X","Block Y","Block Z","Registers Per Thread","Static SMem","Dynamic SMem","Size","Throughput","SrcMemType","DstMemType","Device","Context","Stream","Name","Correlation_ID"
-ms,us,,,,,,,,B,B,MB,GB/s,,,,,,,
-323.458665,60.672000,,,,,,,,,,0.732594,11.791656,"Pageable","Device","NVIDIA GeForce GTX 1060 (0)","1","7","[CUDA memcpy HtoD]",120
-323.524233,43.136000,501,1,1,512,1,1,18,0,0,,,,,"NVIDIA GeForce GTX 1060 (0)","1","7","rgb2hsv(unsigned char*, int, float*, float*, int*)",124
-323.567913,24.544000,501,1,1,512,1,1,9,404,0,,,,,"NVIDIA GeForce GTX 1060 (0)","1","7","histogram(int*, int*, int)",125
-323.593033,22.432000,501,1,1,512,1,1,8,0,0,,,,,"NVIDIA GeForce GTX 1060 (0)","1","7","repart(int*, int*, int*)",126
-323.616489,0.608000,,,,,,,,,,0.000385,0.618839,"Device","Pageable","NVIDIA GeForce GTX 1060 (0)","1","7","[CUDA memcpy DtoH]",127
-323.715465,2.080000,,,,,,,,,,0.000385,0.180891,"Device","Device","NVIDIA GeForce GTX 1060 (0)","1","7","[CUDA memcpy DtoD]",128
-323.718153,17.504000,501,1,1,512,1,1,12,0,0,,,,,"NVIDIA GeForce GTX 1060 (0)","1","7","equalization(int*, float*, int)",129
-323.736265,30.944000,501,1,1,512,1,1,13,0,0,,,,,"NVIDIA GeForce GTX 1060 (0)","1","7","hsv2rgb(unsigned char*, int, float*, float*, float*)",130
-323.838345,58.560000,,,,,,,,,,0.732594,12.216929,"Device","Pageable","NVIDIA GeForce GTX 1060 (0)","1","7","[CUDA memcpy DtoH]",133
-324.065993,79.936000,,,,,,,,,,0.976791,11.933270,"Device","Pageable","NVIDIA GeForce GTX 1060 (0)","1","7","[CUDA memcpy DtoH]",134
+======== Error: Application returned non-zero code 1

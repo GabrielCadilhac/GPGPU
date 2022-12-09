@@ -96,7 +96,7 @@ __global__ void hsv2rgb(unsigned char* p_devOutPixels, int p_imageSize, float* p
     }
 }
 
-__global__ void histogram(int * p_inValue, int * p_outHisto, int p_valueSize)
+__global__ void histogram(int * p_inValue, int * p_outHisto, int p_valueSize, unsigned int N)
 {
 	unsigned int tid = threadIdx.x;
 
@@ -107,7 +107,6 @@ __global__ void histogram(int * p_inValue, int * p_outHisto, int p_valueSize)
     }
 
     tid = threadIdx.x + blockIdx.x * blockDim.x;
-	unsigned int N = 1;
     for(int id = tid; id < p_valueSize; id += gridDim.x * blockDim.x)
     {
         for (int i = id*N; i < N*(id+1) && i < p_valueSize; i++)
@@ -136,6 +135,32 @@ __global__ void repart(int * p_inHisto, int * p_inValue, int * p_outRepart)
 	}
 }
 
+__global__ void repart2(int * p_inHisto, int * p_inValue, int * p_outRepart)
+{
+	__shared__ int sharedRepart[HISTO_SIZE];
+	unsigned int tid = threadIdx.x + blockDim.x * blockIdx.x;
+	unsigned int offset = 0;
+
+	for(int id = threadIdx.x; id < HISTO_SIZE; id += blockDim.x)
+    {
+        sharedRepart[id] = 0;
+    }
+
+	while (offset < HISTO_SIZE && tid >= offset && tid < HISTO_SIZE)
+	{
+		atomicAdd(sharedRepart + tid, p_inHisto[tid-offset]);
+		offset++;
+	}
+
+	__syncthreads();
+
+	for(int id = threadIdx.x; id < HISTO_SIZE; id += blockDim.x)
+    {
+		p_outRepart[id] = sharedRepart[id];
+    }
+}
+
+
 __global__ void equalization(int * p_inValue, float * p_outEqualization, const int p_imageSize)
 {
 	const float LLn = 99.f / (100.f * p_imageSize);
@@ -148,7 +173,7 @@ __global__ void equalization(int * p_inValue, float * p_outEqualization, const i
     }
 }
 
-float HistogramGPU::histogramEqualisation(const std::string & p_loadPath, const std::string & p_savePath, int * result)
+float HistogramGPU::histogramEqualisation(const std::string & p_loadPath, const std::string & p_savePath, int * result, int N)
 {
 	HANDLE_ERROR(cudaMemcpy(_devInPixels, _image._pixels, 3 * _imageSize * sizeof(unsigned char), cudaMemcpyHostToDevice));
 
@@ -160,7 +185,7 @@ float HistogramGPU::histogramEqualisation(const std::string & p_loadPath, const 
 	ChronoGPU chr;
 	chr.start();
 	rgb2hsv <<<dimGrid,dimBlock>>>(_devInPixels, _imageSize, _devOutHue, _devOutSaturation, _devOutValue);
-	histogram<<<dimGrid,dimBlock>>>(_devOutValue, _devOutHisto, _imageSize);
+	histogram<<<dimGrid,dimBlock>>>(_devOutValue, _devOutHisto, _imageSize, N);
 	repart<<<dimGrid,dimBlock>>>(_devOutHisto, _devOutValue, _devOutRepart);
 	HANDLE_ERROR(cudaMemcpyToSymbol(GPU_REPARTITION, _devOutRepart,  HISTO_SIZE * sizeof(int)));
 	equalization<<<dimGrid,dimBlock>>>(_devOutValue, _devOutEqualisation, _imageSize);

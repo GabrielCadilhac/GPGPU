@@ -10,6 +10,21 @@
 
 int main(int argc, char const *argv[])
 {
+    int N = 4;
+
+    if(argc <= 1)
+    {
+        std::cout << "Missing argument !" << std::endl;
+    }
+    for (int i = 1; i < argc; ++i)
+    {
+        if ( !strcmp(argv[i], "-N"))
+        {
+            if (sscanf(argv[++i], "%i", &N) != 1)
+                std::cout << "Error argument N" << std::endl;
+        }
+    }
+
     // Get the image width and height
     Image image;
     image.load(IMAGE_PATH);
@@ -36,7 +51,7 @@ int main(int argc, char const *argv[])
 
     float gpuTime = 0.f;
     HistogramGPU histogramGPU(IMAGE_PATH);
-    gpuTime = histogramGPU.histogramEqualisation(IMAGE_PATH, OUT_GPU_IMAGE_PATH, outGPU);
+    gpuTime = histogramGPU.histogramEqualisation(IMAGE_PATH, OUT_GPU_IMAGE_PATH, outGPU, N);
     std::cout << "Time : " << gpuTime << std::endl;
 
     // CHECK RESULT
