@@ -4,14 +4,14 @@
 #include "histogramCPU.hpp"
 #include "histogramGPU.hpp"
 
-#define IMAGE_PATH "./images/batiment.jpg"
-#define OUT_CPU_IMAGE_PATH "./images/batimentCPU.jpg"
-#define OUT_GPU_IMAGE_PATH "./images/batimentGPU.jpg"
+#define OUT_CPU_IMAGE_PATH "./images/gpu-result.jpg"
+#define OUT_GPU_IMAGE_PATH "./images/cpu-result.jpg"
 
 int main(int argc, char const *argv[])
 {
     int N = 4;
     int blockSize = 512;
+    std::string path("./images/batiment-1.jpg");
 
     if(argc <= 1)
     {
@@ -29,11 +29,16 @@ int main(int argc, char const *argv[])
             if (sscanf(argv[++i], "%i", &blockSize) != 1)
                 std::cout << "Error argument b" << std::endl;
         }
+        else if ( !strcmp(argv[i], "-i"))
+        {
+            path = std::string(argv[++i]);
+            std::cout << "Image loaded -> " << path << std::endl;
+        }
     }
 
     // Get the image width and height
     Image image;
-    image.load(IMAGE_PATH);
+    image.load(path.c_str());
 
     // Results
     const unsigned int imageSize = image._width * image._height;
@@ -46,7 +51,7 @@ int main(int argc, char const *argv[])
 	std::cout << "============================================"	<< std::endl;
 
     float cpuTime = 0.f;
-    HistogramCPU histogramCPU(IMAGE_PATH);
+    HistogramCPU histogramCPU(path.c_str());
     cpuTime = histogramCPU.histogramEqualisation(OUT_CPU_IMAGE_PATH, outCPU);
     std::cout << "Time : " << cpuTime << std::endl;
     
@@ -56,8 +61,8 @@ int main(int argc, char const *argv[])
 	std::cout << "============================================"	<< std::endl;
 
     float gpuTime = 0.f;
-    HistogramGPU histogramGPU(IMAGE_PATH);
-    gpuTime = histogramGPU.histogramEqualisation(IMAGE_PATH, OUT_GPU_IMAGE_PATH, outGPU, N, blockSize);
+    HistogramGPU histogramGPU(path.c_str());
+    gpuTime = histogramGPU.histogramEqualisation(OUT_GPU_IMAGE_PATH, outGPU, N, blockSize);
     std::cout << "Time : " << gpuTime << std::endl;
 
     // CHECK RESULT

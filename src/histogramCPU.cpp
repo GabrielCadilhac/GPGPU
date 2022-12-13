@@ -24,6 +24,9 @@ HistogramCPU::~HistogramCPU()
 
 void HistogramCPU::rgb2hsv(unsigned char * p_pixel)
 {
+    ChronoCPU chronoCPU;
+    chronoCPU.start();
+
     float rgb[3];
     for (unsigned int i = 0; i < _imageSize; i++)
     {
@@ -50,10 +53,16 @@ void HistogramCPU::rgb2hsv(unsigned char * p_pixel)
         _saturation[i] = delta / Cmax;
         _value[i] = Cmax*100.f;
     }
+
+    chronoCPU.stop();
+    std::cout << "HistogramCPU::rgb2hsv -> " << chronoCPU.elapsedTime() << " ms" << std::endl;
 }
 
 void HistogramCPU::hsv2rgb(unsigned char* p_rgb)
 {
+    ChronoCPU chronoCPU;
+    chronoCPU.start();
+
     for (unsigned int i = 0; i < _imageSize; i++)
     {
         float v = _equal[i];
@@ -80,10 +89,16 @@ void HistogramCPU::hsv2rgb(unsigned char* p_rgb)
         p_rgb[3*i+1] = static_cast<unsigned char>(255 * (g + m));
         p_rgb[3*i+2] = static_cast<unsigned char>(255 * (b + m));
     }
+
+    chronoCPU.stop();
+    std::cout << "HistogramCPU::hsv2rgb -> " << chronoCPU.elapsedTime() << " ms" << std::endl;
 }
 
 void HistogramCPU::histogram()
 {
+    ChronoCPU chronoCPU;
+    chronoCPU.start();
+
     for (unsigned int i = 0; i <= histoSize; i++)
         _histo[i] = 0;
 
@@ -92,20 +107,32 @@ void HistogramCPU::histogram()
         int V = _value[i];
         _histo[V]++;
     }
+
+    chronoCPU.stop();
+    std::cout << "HistogramCPU::histogram -> " << chronoCPU.elapsedTime() << " ms" << std::endl;
 }
 
 void HistogramCPU::repart()
 {
+    ChronoCPU chronoCPU;
+    chronoCPU.start();
+
     _repart[0] = _histo[0]; 
 
     for (unsigned int i = 1; i < 101; i++)
     {
         _repart[i] = _repart[i-1] + _histo[i];    
     }
+
+    chronoCPU.stop();
+    std::cout << "HistogramCPU::repart -> " << chronoCPU.elapsedTime() << " ms" << std::endl;
 }
 
 void HistogramCPU::equalization()
 {
+    ChronoCPU chronoCPU;
+    chronoCPU.start();
+
     histogram();
     int sum = 0;
     for(unsigned int i = 0; i < 101; i++)
@@ -122,6 +149,9 @@ void HistogramCPU::equalization()
         int v = _value[i];
         _equal[i] = (LLn * _repart[v]);
     }
+
+    chronoCPU.stop();
+    std::cout << "HistogramCPU::equalization -> " << chronoCPU.elapsedTime() << " ms" << std::endl;
 }
 
 float HistogramCPU::histogramEqualisation(const std::string & p_imageSavePath, int * result)

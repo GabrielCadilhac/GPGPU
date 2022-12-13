@@ -201,7 +201,7 @@ __global__ void equalizationConstant(int * p_inValue, float * p_outEqualization,
     }
 }
 
-float HistogramGPU::histogramEqualisation(const std::string & p_loadPath, const std::string & p_savePath, int * p_result, int p_N, int p_blockSize)
+float HistogramGPU::histogramEqualisation(const std::string & p_savePath, int * p_result, int p_N, int p_blockSize)
 {
 	// Configure amount of threads and blocks
 	dim3 dimBlock(p_blockSize);
@@ -220,7 +220,7 @@ float HistogramGPU::histogramEqualisation(const std::string & p_loadPath, const 
 	HANDLE_ERROR(cudaMemcpyToSymbol(GPU_REPARTITION, _devOutRepart,  HISTO_SIZE * sizeof(int)));
 
 	dimGrid = dim3((_imageSize + dimBlock.x - 1) / dimBlock.x);	
-	equalizationConstant<<<dimGrid,dimBlock>>>(_devOutValue, _devOutEqualisation, _imageSize); // on gagne 10 us avec equalizationConstant
+	equalization<<<dimGrid,dimBlock>>>(_devOutValue, _devOutRepart, _devOutEqualisation, _imageSize); // on gagne 10 us avec equalizationConstant
 	hsv2rgb<<<dimGrid,dimBlock>>>(_devOutPixels, _imageSize, _devOutHue, _devOutSaturation, _devOutEqualisation);
 	
 
